@@ -62,17 +62,17 @@ Update the following parameters in the Config file (config.ini):
 
 Note: The placeholder parameters are generic and are placed there for understanding, thus doesn't contain any sensitive details of any company.
 
-column_Params =type_name,status_name,serial_number                             # Column parameters in table in the database separated by ","
-datetime_Params =time_used,system_date,date_expired,time_generated             # Timestamps for each status  and system date in the table separated by ","
-status_Params ='active','utilize','inactive','expire','suspend','available'    # Unique status parameters in the status_name column separated by ","
-source_tables =table1, table2                                                  # Source tables names. There can be two or more table names separated by ","
-OracleUser =oracle_name                                                        # Database username
-OraclePasswd =oracle_passwd                                                    # Database password
+column_Params =type_name,status_name,serial_number   # Column parameters in table in the database separated by ",".
+datetime_Params =time_used,system_date,date_expired,time_generated   # Timestamps for each status  and system date in the table separated by ",".
+status_Params ='active','utilize','inactive','expire','suspend','available'  # Unique status parameters in the status_name column separated by ",".
+source_tables =table1, table2    # Source tables names. There can be two or more table names separated by ",".
+OracleUser =oracle_name    # Database username.
+OraclePasswd =oracle_passwd    # Database password.
 oracleRMS_servicename =servicename                                             
 standby_ip =10.10.10.10                                                        
 active_ip =127.0.0.1                                                           
-port   =11111                                                                  # Standby server port number
-oracle_port =22222                           # Active server Oracle port. Use command "sudo find . -type f -name listener.ora" on the server to find port.
+port   =11111           # Standby server port number.
+oracle_port =22222  # Active server Oracle port. Use command "sudo find . -type f -name listener.ora" on the server to find port.
 
 
 
