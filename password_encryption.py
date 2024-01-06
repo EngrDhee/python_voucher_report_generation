@@ -12,13 +12,10 @@ def encrypt(key, msg):
     Returns:
     - str: The encrypted message.
     """
-    encrypted = []
-    for i, c in enumerate(msg):
-        key_c = ord(key[i % len(key)])
-        msg_c = ord(c)
-        encrypted.append(chr((msg_c + key_c) % 127))
+    encrypted = [chr((ord(c) + ord(key[i % len(key)])) % 127) for i, c in enumerate(msg)]
     return ''.join(encrypted)
-
+	
+	
 def main():
     """
     Main function to take user input, encrypt the Oracle DB password, and print the results.
