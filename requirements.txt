@@ -1,0 +1,5 @@
+configparser==4.0.2
+cx-Oracle==7.3.0
+pandas==0.24.2
+SQLAlchemy==1.4.23
+virtualenv==20.7.2
