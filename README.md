@@ -59,7 +59,9 @@ Set up the Oracle environment on the lab before executing.
 Update the following parameters in the Config file (config.ini):
 
 [parameters]
+
 Note: The placeholder parameters are generic and are placed there for understanding, thus doesn't contain any sensitive details of any company.
+
 column_Params =type_name,status_name,serial_number                             # Column parameters in table in the database separated by ","
 datetime_Params =time_used,system_date,date_expired,time_generated             # Timestamps for each status  and system date in the table separated by ","
 status_Params ='active','utilize','inactive','expire','suspend','available'    # Unique status parameters in the status_name column separated by ","
