@@ -1,30 +1,6 @@
 #!/usr/bin/python
-"""
-Title: Automatic Voucher Report Generation
-Author: DEEWHY - Suleiman Dayo Abdullahi
-Script Name: auto_voucher_report_generation.py
 
-Description:
-This Python script connects to an Oracle database to retrieve data related to card types and their statuses.
-It processes the data to calculate various counts, including activations, deactivations, and expirations.
-The script generates CSV and TXT reports for two specific tables (UCMS_CARDS and Imported_Cards).
-Execution details are logged in separate log files.
-
-Instructions:
-1. Ensure Python is installed on your system.
-2. Save the script as auto_voucher_report_generation.py.
-3. Ensure you have the required modules (pandas, os, sys, time, datetime, ConfigParser, logging, socket, sqlalchemy).
-   These modules are generally available with standard Python installations.
-4. Create a configuration file named config.ini in the same directory as the script. Ensure it contains the necessary parameters like Oracle credentials, service name, etc.
-5. Run the script using Python by executing the following command:
-    python auto_voucher_report_generation.py
-
-Note: Execute this script on the standby system to avoid disruptions.
-
-After execution, the script will generate reports in CSV and TXT formats providing detailed information about card counts based on their statuses.
-
-"""
-
+# Import necessary libraries
 import pandas as pd
 import os
 import sys
@@ -53,8 +29,33 @@ def decrypt(key, encrypted):
     Returns:
     - str: The decrypted message.
     """
+    # Decrypt message using Caesar cipher
     decrypted_msg = [chr((ord(c) - ord(key[i % len(key)])) % 127) for i, c in enumerate(encrypted)]
     return ''.join(decrypted_msg)
+
+
+def server_login(cf):
+    """
+    Checks if the server is on standby.
+
+    Parameters:
+    - cf: ConfigParser object containing parameters.
+
+    Exits the script if the server is not on standby.
+    """
+    # Extract parameters from the configuration file
+    ipchk = cf.get('parameters', 'mated_ip')
+    port = cf.get('parameters', 'port')
+    actip = cf.get('parameters', 'rms_ip')
+    dbport = cf.get('parameters', 'oracle_port')
+
+    # Check if the server is on standby
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    res = sock.connect_ex((ipchk, int(port)))
+
+    if res == 0:
+        logging.info("The server is not standby. Please execute this script on a standby system")
+        sys.exit()
 
 
 def setup_logging(workdir, now, logdirname):
@@ -66,6 +67,7 @@ def setup_logging(workdir, now, logdirname):
     - now (datetime): The current date and time.
     - logdirname (str): The directory for log files.
     """
+    # Set up logging file configuration
     logfilename = logdirname + '/' + now.strftime('rmsReportingTool_%d%m%Y_%H%M.log')
     if not os.path.exists(logdirname):
         os.makedirs(logdirname)
@@ -77,28 +79,35 @@ def setup_logging(workdir, now, logdirname):
     )
 
 
-def card_count(source_tables, oracle_user, oracle_passwd, service_nm, csvname1, csvname2, name1, name2, logs, column_params, status_params, datetime_params):
+def query_db_4_count(oracle_passwd, logs, cf):
     """
     Performs card count analysis based on various parameters.
 
     Parameters:
-    - source_tables (list): List of tables to analyze.
-    - oracle_user (str): Oracle database username.
     - oracle_passwd (str): Decrypted Oracle database password.
-    - service_nm (str): Oracle service name.
-    - csvname1 (str): Path for the CSV report for UCMS_CARDS.
-    - csvname2 (str): Path for the CSV report for Imported_Cards.
-    - name1 (str): Path for the TXT report for UCMS_CARDS.
-    - name2 (str): Path for the TXT report for Imported_Cards.
     - logs: Logging information.
-    - column_params (list): List of column parameters.
-    - status_params (list): List of status parameters.
-    - datetime_params (list): List of datetime parameters.
+    - cf: ConfigParser object containing parameters.
+
+    Returns:
+    - tuple: (df_map: dict, source_tables: list)
     """
+    # Extract parameters from the configuration file
+    column_params = cf.get('parameters', 'ColumnParams').split(',')
+    datetime_params = cf.get('parameters', 'DateTimeParams').split(',')
+    status_params = cf.get('parameters', 'StatusParams').split(',')
+    source_tables = cf.get('parameters', 'SourceTable').split(',')
+    oracle_user = cf.get('parameters', 'OracleUser')
+    service_nm = cf.get('parameters', 'oracleRMS_servicename')
+
     try:
+        # Create connection string for Oracle database
         conn_str = ('oracle+cx_oracle://{un}:{psd}@{sn}'.format(un=oracle_user,psd=oracle_passwd,sn=service_nm))
         engine = sqlalchemy.create_engine(conn_str)
 
+        logging.info("Starting the select query, count, and result analysis")
+        df_map = {}
+
+        # Iterate through each table for analysis
         for table in source_tables:
             query = """
             SELECT
@@ -122,31 +131,17 @@ def card_count(source_tables, oracle_user, oracle_passwd, service_nm, csvname1, 
             GROUP BY {column_params[0]}
             ORDER BY {column_params[0]}
             """
+
             logging.info("Fetching the data for table %s", table)
+
+            # Execute SQL query and store results in a Pandas DataFrame
             df = pd.read_sql(query.format(
                 table=table, column_params=column_params, status_params=status_params, datetime_params=datetime_params
             ), engine, index_col=column_params[0]
             )
+            df_map[table] = df
 
-            if isinstance(df, pd.DataFrame):
-                tot_rows = df.shape[0]
-                logging.info("Total records in table %s with select conditions are %s", table, str(tot_rows))
-
-                if table == source_tables[0]:
-                    df = df.sort_index(axis=0, ascending=False)
-                    df.to_csv(csvname1, mode='a', header=True)
-                    df_str = df.to_string(index=True)
-                    with open(name1, 'w') as file:
-                        file.write(df_str + '\n')
-
-                else:
-                    df.to_csv(csvname2, mode='a', header=True)
-                    df_str = df.to_string(index=True)
-                    with open(name2, 'w') as file:
-                        file.write(df_str + '\n')
-
-            else:
-                logging.info("No records found for all cards count case in table %s", table)
+        return df_map, source_tables
 
     except SQLAlchemyError as e:
         logging.info("TIME: " + str(time.strftime("%H:%M:%S", time.localtime(time.time()))) +
@@ -154,56 +149,82 @@ def card_count(source_tables, oracle_user, oracle_passwd, service_nm, csvname1, 
         print(e)
 
 
+def convert_df_2_csv_txt(logdirname, df_details, now):
+    """
+    Converts DataFrames to CSV and TXT files.
+
+    Parameters:
+    - logdirname (str): The directory for log files.
+    - df_details (tuple): (df_map: dict, source_tables: list)
+    - now (datetime): The current date and time.
+    """
+    # Extract parameters from the tuple
+    csvname1 = logdirname + '/' + now.strftime('Report_UCMSDataFrame_%d%m%Y_%H%M.csv')
+    csvname2 = logdirname + '/' + now.strftime('Report_ImportedDataFrame_%d%m%Y_%H%M.csv')
+    name1 = logdirname + '/' + now.strftime('Report_UCMSDataFrame_%d%m%Y_%H%M.txt')
+    name2 = logdirname + '/' + now.strftime('Report_ImportedDataFrame_%d%m%Y_%H%M.txt')
+    df_map = df_details[0]
+    source_tables = df_details[1]
+
+    # Iterate through each table and process DataFrame
+    for table, df in df_map.items():
+        if isinstance(df, pd.DataFrame):
+            tot_rows = df.shape[0]
+            logging.info("Total records in table %s with select conditions are %s", table, str(tot_rows))
+
+            # Process data for UCMS_CARDS table
+            if table == source_tables[0]:
+                df = df.sort_index(axis=0, ascending=False)
+                df.to_csv(csvname1, mode='a', header=True)
+                df_str = df.to_string(index=True)
+                with open(name1, 'w') as file:
+                    file.write(df_str + '\n')
+
+            # Process data for Imported_Cards table
+            if table == source_tables[1]:
+                df.to_csv(csvname2, mode='a', header=True)
+                df_str = df.to_string(index=True)
+                with open(name2, 'w') as file:
+                    file.write(df_str + '\n')
+
+        else:
+            logging.info("No records found for all cards count case in table %s", table)
+
+
 def main():
+    # Get the current working directory and time
     workdir = os.getcwd()
     now = datetime.datetime.now()
 
+    # Create a directory for logging files
     logdirname = workdir + '/' + now.strftime('rmsReporting_%d%m%Y%H%M')
     logs = setup_logging(workdir, now, logdirname)
 
     logging.info('Log Execution Directory is at path :%s', logdirname)
 
-    fnm = "config1.ini"
+    # Read configuration file
+    fnm = "config.ini"
     cf = ConfigParser.ConfigParser(allow_no_value=True)
     a = cf.read(os.path.join(workdir, fnm))
 
+    # Check if the configuration file is present
     if len(a) == 0:
         logging.info("ERROR: Configuration file config.ini not found in Current Working directory :%s", workdir)
         sys.exit()
 
-    ipchk = cf.get('parameters', 'mated_ip')
-    port = cf.get('parameters', 'port')
-    actip = cf.get('parameters', 'rms_ip')
-    dbport = cf.get('parameters', 'oracle_port')
+    # Check server status
+    server_login(cf)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    res = sock.connect_ex((ipchk, int(port)))
-
-    if res == 0:
-        logging.info("The server is not standby. Please execute this script on a standby system")
-        sys.exit()
-
-    column_params = cf.get('parameters', 'ColumnParams').split(',')
-    datetime_params = cf.get('parameters', 'DateTimeParams').split(',')
-    status_params = cf.get('parameters', 'StatusParams').split(',')
-    source_tables = cf.get('parameters', 'SourceTable').split(',')
-    oracle_user = cf.get('parameters', 'OracleUser')
-    oracle_passwd_enc = cf.get('parameters', 'OraclePasswd')
-    service_nm = cf.get('parameters', 'oracleRMS_servicename')
-    service_nm = cf.get('parameters', 'oracleRMS_servicename')
-
+    # Decrypt Oracle database password
     key = "password encryption"
+    oracle_passwd_enc = cf.get('parameters', 'OraclePasswd')
     oracle_passwd = decrypt(key, oracle_passwd_enc)
 
-    csvname1 = logdirname + '/' + now.strftime('Report_UCMSDataFrame_%d%m%Y_%H%M.csv')
-    csvname2 = logdirname + '/' + now.strftime('Report_ImportedDataFrame_%d%m%Y_%H%M.csv')
-    name1 = logdirname + '/' + now.strftime('Report_UCMSDataFrame_%d%m%Y_%H%M.txt')
-    name2 = logdirname + '/' + now.strftime('Report_ImportedDataFrame_%d%m%Y_%H%M.txt')
+    # Query database for card count analysis
+    df_details = query_db_4_count(oracle_passwd, logs, cf)
 
-    logging.info("Starting the select query, count and its result analysis")
-
-    card_count(source_tables, oracle_user, oracle_passwd, service_nm, csvname1, csvname2, name1, name2, logs, column_params,
-               status_params, datetime_params)
+    # Convert DataFrames to CSV and TXT
+    convert_df_2_csv_txt(logdirname, df_details, now)
 
     logging.info('Tool Execution Ended ')
 
