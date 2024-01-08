@@ -16,7 +16,7 @@ This Python script automates the generation of voucher reports for Globacom. It 
 
 - Connects to an Oracle database to retrieve data related to card types and their statuses.
 - Processes the data to calculate various counts, including activations, deactivations, expirations, etc.
-- Generates CSV and TXT reports for two specific tables (UCMS_CARDS and Imported_Cards).
+- Generates CSV and TXT reports for two specific tables.
 - Logs execution details in separate log files.
 
 ## Instructions
