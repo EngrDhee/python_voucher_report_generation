@@ -44,47 +44,9 @@ Keep the config.ini in the same directory as the tool.
 
 Install the required libraries using the provided requirements.txt. You can also set up a Python virtual environment.
 
-
-[requirements.txt]
-configparser==4.0.2
-cx-Oracle==7.3.0
-pandas==0.24.2
-SQLAlchemy==1.4.23
-virtualenv==20.7.2
-
-
-
 Set up the Oracle environment on the lab before executing.
 
-Update the following parameters in the Config file (config.ini):
-
-[parameters]
-
-Note: The placeholder parameters are generic and are placed there for understanding, thus doesn't contain any sensitive details of any company.
-
-column_Params =type_name,status_name,serial_number   # Column parameters in table in the database separated by ",".
-
-datetime_Params =time_used,system_date,date_expired,time_generated   # Timestamps for each status  and system date in the table separated by ",".
-
-status_Params ='active','utilize','inactive','expire','suspend','available'  # Unique status parameters in the status_name column separated by ",".
-
-source_tables =table1, table2    # Source tables names. There can be two or more table names separated by ",".
-
-OracleUser =oracle_name    # Database username.
-
-OraclePasswd =oracle_passwd    # Database password.
-
-oracleRMS_servicename =servicename 
-
-standby_ip =10.10.10.10    
-
-active_ip =127.0.0.1      
-
-port   =11111           # Standby server port number.
-
-oracle_port =22222  # Active server Oracle port. Use command "sudo find . -type f -name listener.ora" on the server to find port.
-
-
+Update the Config file (config.ini) parameters.
 
 Execute this script on the standby system to avoid disruptions.
 
