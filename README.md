@@ -39,7 +39,7 @@ source rmsenv/bin/activate
 ./auto_voucher_report_generation.py
 
 
-Notes
+# Notes
 Keep the config.ini in the same directory as the tool.
 
 Install the required libraries using the provided requirements.txt. You can also set up a Python virtual environment.
